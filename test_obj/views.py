@@ -14,6 +14,8 @@ class TestDynamicObject(APIView):
 
         test = TestEmbed.objects.all().values() 
         test = list(test)
+        print(test)
+        
         serialized_data = self.serializer_class(data=test,many = True)
         serialized_data.is_valid(raise_exception=True)
         return Response(serialized_data.validated_data,status=status.HTTP_201_CREATED)

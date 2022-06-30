@@ -1,10 +1,12 @@
 from djongo import models
 from django.db.models import DEFERRED
-from sqlalchemy import desc
 
-from djongo.models.fields import EmbeddedField,ModelField,FormedField
+from djongo.models.fields import FormedField
 from django.core.exceptions import ValidationError
 
+
+
+# override the model.EmbeddedField to achive the non-null constraints
 class CustomEmbeddedField(FormedField): 
     
     def __init__(self,model_container, *args, **kwargs) -> None:
@@ -15,6 +17,7 @@ class CustomEmbeddedField(FormedField):
                  *args, **kwargs)
 
     def _save_value_thru_fields(self, func_name: str, value: dict, *other_args):
+        # override the method to save the fields in db which does not have any null value
         processed_value = {}
         errors = {}
         for field in self.model_container._meta.get_fields():
@@ -23,8 +26,7 @@ class CustomEmbeddedField(FormedField):
                     field_value = value[field.attname]
                 except KeyError:
                     raise ValidationError(f'Value for field "{field}" not supplied')
-                print("Field vlaues--> {}",field_value)
-                if field_value is not None or field_value!="":
+                if field_value is not None:
                     processed_value[field.attname] = getattr(field, func_name)(field_value, *other_args)
             except ValidationError as e:
                 errors[field.name] = e.error_list
@@ -32,12 +34,22 @@ class CustomEmbeddedField(FormedField):
         if errors:
             e = ValidationError(errors)
             raise ValidationError(str(e))
+ 
+        return processed_value 
 
-        # return processed_value
-        # print(processed_value)
-        del processed_value["desc1"]
-        return super()._save_value_thru_fields(func_name, processed_value, *other_args)
+    def _value_thru_fields(self, func_name: str, value: dict, *other_args):
+        # override the method to fetch the fields from db which does not have any null value
+        processed_value = {}
+        for field in self.model_container._meta.get_fields():
+            try:
+                field_value = value[field.attname]
+            except KeyError:
+                continue
+            if field_value is not None:
+                processed_value[field.attname] = getattr(field, func_name)(field_value, *other_args)
+        return processed_value
 
+# override the save method to achieve the non null constraints in base model
 class Test(models.Model):
     _id = models.ObjectIdField()
     msg = models.CharField(max_length=200,blank = True, null = True)
@@ -104,24 +116,14 @@ class Test(models.Model):
         super().save(*args, **kwargs)
 
 
+
+
 class TestAbs(models.Model):
     desc = models.CharField(max_length=30,blank=True,null=True)
-    desc1 = models.CharField(max_length=30,blank=True,null=True)
-
-    
-    
+    desc1 = models.CharField(max_length=30,blank=True,null=True) 
     class Meta:
-        abstract = True
-        
-        
-
-    
-    # return the object as the updated one means, ifany field doest not contain any value don't include it.
-
-     
-
-
-
+        abstract = True 
+ 
 class TestEmbed(models.Model):
     _id = models.ObjectIdField()
     test_embed = CustomEmbeddedField(model_container=TestAbs)
@@ -134,13 +136,11 @@ class TestEmbed(models.Model):
             raw= True
             values = [(f, None, (getattr(self, f.attname) if raw else f.pre_save(self, False)))
                         for f in non_pks]  
-            non_null_values_fields = []
-            # print(non_pks)
+            non_null_values_fields = [] 
             try:
                 for f in non_pks:
                     field_value = getattr(self,f.attname)
-                    if field_value is not None and field_value != "":
-                        # print(field_value)
+                    if field_value is not None and field_value != "": 
                         non_null_values_fields.append(f)
                 
                 non_null_values_fields = tuple(non_null_values_fields)
@@ -149,5 +149,8 @@ class TestEmbed(models.Model):
                 pass
             
             super().save(*args, **kwargs)
+
+
+
 
 # save()-->save_base()-->_save_table(){local_concrete_fields}
