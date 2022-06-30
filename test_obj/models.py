@@ -1,13 +1,13 @@
 from djongo import models
 from django.db.models import DEFERRED
 
-from djongo.models.fields import FormedField
+from djongo.models.fields import EmbeddedField
 from django.core.exceptions import ValidationError
 
 
 
 # override the model.EmbeddedField to achive the non-null constraints
-class CustomEmbeddedField(FormedField): 
+class CustomEmbeddedField(EmbeddedField): 
     
     def __init__(self,model_container, *args, **kwargs) -> None:
         self.model_container = model_container
@@ -55,25 +55,26 @@ class Test(models.Model):
     msg = models.CharField(max_length=200,blank = True, null = True)
     test = models.CharField(max_length=200,blank = True, null = True)
     count = models.IntegerField(blank=True,null=True)
+    date_time_testing = models.DateTimeField(blank=True,null=True)
+    required_fields = models .CharField(max_length = 50,blank=False,null = False,default="abc")
 
+    
     class Meta: 
         db_table = "test" 
     
     @classmethod
     def from_db(cls, db, field_names, values):
-        # if len(values) != len(cls._meta.concrete_fields):
-        print("from_db is called")
-        values = list(values)
-        values.reverse()
-        values = [
-            values.pop() if f.attname in ['test','count'] else DEFERRED
-            for f in cls._meta.concrete_fields
-        ]
-        instance = cls(*values)
-        instance._state.adding = False
-        instance._state.db = db
-        instance._loaded_values = dict(zip(field_names,values))
-        return instance
+        print("from db is called")
+        if len(values) != len(cls._meta.concrete_fields):
+            values_iter = iter(values)
+            values = [
+                next(values_iter) if f.attname in field_names else DEFERRED
+                for f in cls._meta.concrete_fields
+            ]
+        new = cls(*values)
+        new._state.adding = False
+        new._state.db = db
+        return new
 
     def save(self, *args, **kwargs): 
         # field optimization can be done by both _concrete_fields and local_concrete_fields 
