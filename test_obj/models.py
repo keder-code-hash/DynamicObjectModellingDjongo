@@ -4,6 +4,7 @@ from django.db.models import DEFERRED
 from djongo.models.fields import EmbeddedField
 from django.core.exceptions import ValidationError
 
+from django.db.models import DateTimeField
 
 
 # override the model.EmbeddedField to achive the non-null constraints
@@ -20,14 +21,44 @@ class CustomEmbeddedField(EmbeddedField):
         # override the method to save the fields in db which does not have any null value
         processed_value = {}
         errors = {}
+        # print(type(self.model_container._meta.get_fields()[3]))
+        # print(self.model_container._meta.get_fields()[3].get_db_prep_value())
+
+        # print("this is field value : ",value)
+
         for field in self.model_container._meta.get_fields():
+
             try:
                 try:
                     field_value = value[field.attname]
+
+                    if field_value is None or field_value =="":
+                        # if field contains a "default value" then any null or blank values are not allowed.
+                        if not isinstance(field.default,type):
+                            if field.blank is False and field.null is False:
+                                raise ValidationError(f'"{field}" has a default value as "{field.default}".It can\'t be changed to null or "" ')
+                        
+                        if field.blank is False:
+                            raise ValidationError(f'Value for field "{field}" not supported as it is not allowed empty values')
+
+                        if field.null is True or field.blank is True or (field.null is True and field.blank is True):
+                            # null values or "" or both  are allowed to the field. By defualt django model doesnot allow both to true
+                            processed_value[field.attname] = getattr(field, func_name)(field.default, *other_args)
+                         
                 except KeyError:
-                    raise ValidationError(f'Value for field "{field}" not supplied')
-                if field_value is not None:
+                    # if no value is passed from the frontend and if field contain a default value the set it to default val
+                    if field.blank is False and field.null is False:
+                        if not isinstance(field.default,type): 
+                            # having a default value and we didnot pass any value regarding this field
+                            processed_value[field.attname] = getattr(field, func_name)(field.default, *other_args)
+                        else :
+                            # did not pass any value from frontend
+                            field_value = None
+                            # raise ValidationError(f'Value for field "{field}" not supplied')
+
+                if field_value is not None and isinstance(field.default,type) and not isinstance(field,DateTimeField):  
                     processed_value[field.attname] = getattr(field, func_name)(field_value, *other_args)
+
             except ValidationError as e:
                 errors[field.name] = e.error_list
 
@@ -48,6 +79,7 @@ class CustomEmbeddedField(EmbeddedField):
             if field_value is not None:
                 processed_value[field.attname] = getattr(field, func_name)(field_value, *other_args)
         return processed_value
+
 
 # override the save method to achieve the non null constraints in base model
 class Test(models.Model):
@@ -117,11 +149,14 @@ class Test(models.Model):
         super().save(*args, **kwargs)
 
 
-
-
 class TestAbs(models.Model):
     desc = models.CharField(max_length=30,blank=True,null=True)
-    desc1 = models.CharField(max_length=30,blank=True,null=True) 
+    desc1 = models.CharField(max_length=30,blank=False,null=False,default = "default values")
+    desc2 = models.CharField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         abstract = True 
  
