@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 
 from django.db.models import DateTimeField
 
+from django.utils import timezone
 
 # override the model.EmbeddedField to achive the non-null constraints
 class CustomEmbeddedField(EmbeddedField): 
@@ -56,8 +57,15 @@ class CustomEmbeddedField(EmbeddedField):
                             field_value = None
                             # raise ValidationError(f'Value for field "{field}" not supplied')
 
+                    # setting DateTimeField or DateField value
+                        # auto_now - editable=False
+                    # if isinstance(field,DateTimeField):
+
+
+
                 if field_value is not None and isinstance(field.default,type) and not isinstance(field,DateTimeField):  
                     processed_value[field.attname] = getattr(field, func_name)(field_value, *other_args)
+
 
             except ValidationError as e:
                 errors[field.name] = e.error_list
@@ -154,8 +162,8 @@ class TestAbs(models.Model):
     desc1 = models.CharField(max_length=30,blank=False,null=False,default = "default values")
     desc2 = models.CharField()
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    # created_at = models.DateTimeField(auto_now_add=True)
+    # updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         abstract = True 
