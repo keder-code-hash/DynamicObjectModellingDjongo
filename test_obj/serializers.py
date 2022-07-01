@@ -10,7 +10,7 @@ class TestSerializers(serializers.ModelSerializer):
 
 class TestAbsSerializers(serializers.Serializer):
     desc = serializers.CharField(required=False, allow_null=True,allow_blank = True)
-    desc1 = serializers.CharField(required=False, allow_null=True,allow_blank = True)
+    desc1 = serializers.CharField(required=False, allow_null=True,allow_blank = True,default = "")
     desc2 = serializers.CharField(required=False, allow_null=True,allow_blank = True)
 
     # file_testing_fields = serializers.FileField()
@@ -27,7 +27,8 @@ class TestAbsSerializers(serializers.Serializer):
 
 
 class TestEmbedSerializers(serializers.ModelSerializer):
-    test_embed = TestAbsSerializers(required = False)
+    test_embed = serializers.JSONField(required = False)
+    test_array = serializers.ListField(child = TestAbsSerializers(),default = [],allow_null = True)
     class Meta:
         model = TestEmbed
         read_only_fields = ('_id',)

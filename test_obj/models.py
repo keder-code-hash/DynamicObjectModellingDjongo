@@ -11,8 +11,10 @@ from django.db.models.fields import NOT_PROVIDED
 
 from django.utils import timezone
 
+
 # override the model.EmbeddedField to achive the non-null constraints
-class CustomEmbeddedField(EmbeddedField): 
+# EmbeddedDocument
+class EmbeddedDocument(EmbeddedField): 
     
     def __init__(self,model_container, *args, **kwargs) -> None:
         self.model_container = model_container
@@ -65,7 +67,7 @@ class CustomEmbeddedField(EmbeddedField):
                         else :
                             # did not pass any value from frontend
                             field_value = None
-                            # raise ValidationError(f'Value for field "{field}" not supplied')
+                            
 
                     # setting DateTimeField or DateField value. It gets fired when user did't provide any value for these fields.
                         # auto_now_add - editable=False - fire at only iintial instance creation
@@ -84,9 +86,15 @@ class CustomEmbeddedField(EmbeddedField):
 
                 # print(f'fields are called for "{field}" and defualt value for fields "{field.default}"')
 
-                if field_value is not None and not isinstance(field.default,NOT_PROVIDED): 
-                    print(f'fields are called for "{field}"')
+                #  can not set the custom values for date and datetime fields if auto_now or auto now_add true.
+                if (isinstance(field,DateTimeField) or isinstance(field,DateField) or isinstance(field,TimeField))\
+                        and (field.auto_now is True or field.auto_now_add is True):
+                    field_value = None
+
+                if field_value is not None and not isinstance(field.default,NOT_PROVIDED) : 
+                    print(f'fields are called for "{field}"') 
                     processed_value[field.attname] = getattr(field, func_name)(field_value, *other_args)
+
 
             except ValidationError as e:
                 errors[field.name] = e.error_list
@@ -199,7 +207,8 @@ class TestAbs(models.Model):
  
 class TestEmbed(models.Model):
     _id = models.ObjectIdField()
-    test_embed = CustomEmbeddedField(model_container=TestAbs)
+    test_embed = EmbeddedDocument(model_container=TestAbs)
+    test_array = models.ArrayField(model_container=TestAbs)
 
     class Meta:
         db_table = "TestEmbed"
@@ -222,8 +231,6 @@ class TestEmbed(models.Model):
                 pass
             
             super().save(*args, **kwargs)
-
-
 
 
 # save()-->save_base()-->_save_table(){local_concrete_fields}
