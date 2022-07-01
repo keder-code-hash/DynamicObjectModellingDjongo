@@ -1,10 +1,11 @@
+from distutils.log import error
 from djongo import models
 from django.db.models import DEFERRED
 
 from djongo.models.fields import EmbeddedField
 from django.core.exceptions import ValidationError
 
-from django.db.models import DateTimeField
+from django.db.models import DateTimeField,DateField,TimeField
 
 from django.utils import timezone
 
@@ -28,8 +29,8 @@ class CustomEmbeddedField(EmbeddedField):
         # print("this is field value : ",value)
 
         for field in self.model_container._meta.get_fields():
-
             try:
+                field_value = None
                 try:
                     field_value = value[field.attname]
 
@@ -38,14 +39,21 @@ class CustomEmbeddedField(EmbeddedField):
                         if not isinstance(field.default,type):
                             if field.blank is False and field.null is False:
                                 raise ValidationError(f'"{field}" has a default value as "{field.default}".It can\'t be changed to null or "" ')
+                           
+                        if field.blank is False or field.null is False:
+                            # raise ValidationError(f'Value for field "{field}" not supported as it is not allowed empty values')
+                            field_value = None
+                            
+                        # null values or "" or both  are allowed to the field, keep the value as it is. By defualt django model doesnot allow both to true
+                        if field.null is True and field_value is None:
+                            processed_value[field.attname] = getattr(field, func_name)(field_value, *other_args)
+                        elif field.blank is True and field_value =="":
+                            processed_value[field.attname] = getattr(field, func_name)(field_value, *other_args)
+                        elif field.blank is True and field.null is True:
+                            processed_value[field.attname] = getattr(field, func_name)(field_value, *other_args)
+                        else:
+                            raise ValidationError(f'Value for field "{field}" not supported as it is not allowed "{field_value}" values')
                         
-                        if field.blank is False:
-                            raise ValidationError(f'Value for field "{field}" not supported as it is not allowed empty values')
-
-                        if field.null is True or field.blank is True or (field.null is True and field.blank is True):
-                            # null values or "" or both  are allowed to the field. By defualt django model doesnot allow both to true
-                            processed_value[field.attname] = getattr(field, func_name)(field.default, *other_args)
-                         
                 except KeyError:
                     # if no value is passed from the frontend and if field contain a default value the set it to default val
                     if field.blank is False and field.null is False:
@@ -58,14 +66,23 @@ class CustomEmbeddedField(EmbeddedField):
                             # raise ValidationError(f'Value for field "{field}" not supplied')
 
                     # setting DateTimeField or DateField value
-                        # auto_now - editable=False
-                    # if isinstance(field,DateTimeField):
+                        # auto_now_add - editable=False - fire at only iintial instance creation
+                    if isinstance(field,DateTimeField) or isinstance(field,DateField) or isinstance(field,TimeField): 
+                        current_time = timezone.now()
+                        formatted_value = field.to_python(current_time)
+                        if field.auto_now_add is True:
+                            field.editable = False
+                        elif field.auto_now is True:
+                            field.editable = True
+                        try :
+                            field._check_fix_default_value()
+                            processed_value[field.attname] = getattr(field, func_name)(formatted_value, *other_args)
+                        except Warning as w:
+                            errors[field.name] = w.with_traceback()
 
 
-
-                if field_value is not None and isinstance(field.default,type) and not isinstance(field,DateTimeField):  
+                if field_value is not None and isinstance(field.default,type):  
                     processed_value[field.attname] = getattr(field, func_name)(field_value, *other_args)
-
 
             except ValidationError as e:
                 errors[field.name] = e.error_list
@@ -162,8 +179,14 @@ class TestAbs(models.Model):
     desc1 = models.CharField(max_length=30,blank=False,null=False,default = "default values")
     desc2 = models.CharField()
 
-    # created_at = models.DateTimeField(auto_now_add=True)
-    # updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    created_at_date = models.DateField(auto_now_add=True)
+    updated_at_date = models.DateField(auto_now=True)
+    
+    created_at_time = models.TimeField(auto_now_add=True)
+    updated_at_time = models.TimeField(auto_now=True)
 
     class Meta:
         abstract = True 
