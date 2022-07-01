@@ -2,7 +2,7 @@ from distutils.log import error
 from djongo import models
 from django.db.models import DEFERRED
 
-from djongo.models.fields import EmbeddedField
+from djongo.models.fields import EmbeddedField,ArrayField
 from django.core.exceptions import ValidationError
 
 from django.db.models import DateTimeField,DateField,TimeField
@@ -10,10 +10,9 @@ from django.db.models import DateTimeField,DateField,TimeField
 from django.db.models.fields import NOT_PROVIDED
 
 from django.utils import timezone
+import typing
 
-
-# override the model.EmbeddedField to achive the non-null constraints
-# EmbeddedDocument
+# override the model.EmbeddedField to achieve the skippable null field feature
 class EmbeddedDocument(EmbeddedField): 
     
     def __init__(self,model_container, *args, **kwargs) -> None:
@@ -30,7 +29,7 @@ class EmbeddedDocument(EmbeddedField):
         # print(type(self.model_container._meta.get_fields()[3]))
         # print(self.model_container._meta.get_fields()[3].get_db_prep_value())
 
-        # print("this is field value : ",value)
+        print("this is field value : ",value)
 
         for field in self.model_container._meta.get_fields():
             try:
@@ -117,6 +116,25 @@ class EmbeddedDocument(EmbeddedField):
                 processed_value[field.attname] = getattr(field, func_name)(field_value, *other_args)
         return processed_value
 
+# override the model.ArrayField to achieve the skippable null field feature
+class ArrayDocument(ArrayField):
+    def __init__(self,model_container, *args, **kwargs) -> None:
+        self.model_container = model_container
+        super().__init__(model_container = model_container,
+                 model_form_class = None,
+                 model_form_kwargs = None,
+                 *args, **kwargs)
+    
+    def _save_value_thru_fields(self, func_name: str, value: typing.Union[list, dict], *other_args):
+
+        EmbeddedDocumentObj = EmbeddedDocument(model_container=self.model_container)
+        processed_value = []
+        for pre_dict in value:
+            post_dict =EmbeddedDocumentObj._save_value_thru_fields(func_name,
+                                                            pre_dict,
+                                                            *other_args)
+            processed_value.append(post_dict)
+        return processed_value
 
 # override the save method to achieve the non null constraints in base model
 class Test(models.Model):
@@ -208,7 +226,7 @@ class TestAbs(models.Model):
 class TestEmbed(models.Model):
     _id = models.ObjectIdField()
     test_embed = EmbeddedDocument(model_container=TestAbs)
-    test_array = models.ArrayField(model_container=TestAbs)
+    test_array = ArrayDocument(model_container=TestAbs)
 
     class Meta:
         db_table = "TestEmbed"

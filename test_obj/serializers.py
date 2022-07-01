@@ -10,7 +10,7 @@ class TestSerializers(serializers.ModelSerializer):
 
 class TestAbsSerializers(serializers.Serializer):
     desc = serializers.CharField(required=False, allow_null=True,allow_blank = True)
-    desc1 = serializers.CharField(required=False, allow_null=True,allow_blank = True,default = "")
+    desc1 = serializers.CharField(required=False, allow_null=True,allow_blank = True)
     desc2 = serializers.CharField(required=False, allow_null=True,allow_blank = True)
 
     # file_testing_fields = serializers.FileField()
