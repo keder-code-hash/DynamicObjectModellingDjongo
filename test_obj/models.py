@@ -7,6 +7,8 @@ from django.core.exceptions import ValidationError
 
 from django.db.models import DateTimeField,DateField,TimeField
 
+from django.db.models.fields import NOT_PROVIDED
+
 from django.utils import timezone
 
 # override the model.EmbeddedField to achive the non-null constraints
@@ -65,7 +67,7 @@ class CustomEmbeddedField(EmbeddedField):
                             field_value = None
                             # raise ValidationError(f'Value for field "{field}" not supplied')
 
-                    # setting DateTimeField or DateField value
+                    # setting DateTimeField or DateField value. It gets fired when user did't provide any value for these fields.
                         # auto_now_add - editable=False - fire at only iintial instance creation
                     if isinstance(field,DateTimeField) or isinstance(field,DateField) or isinstance(field,TimeField): 
                         current_time = timezone.now()
@@ -80,8 +82,10 @@ class CustomEmbeddedField(EmbeddedField):
                         except Warning as w:
                             errors[field.name] = w.with_traceback()
 
+                # print(f'fields are called for "{field}" and defualt value for fields "{field.default}"')
 
-                if field_value is not None and isinstance(field.default,type):  
+                if field_value is not None and not isinstance(field.default,NOT_PROVIDED): 
+                    print(f'fields are called for "{field}"')
                     processed_value[field.attname] = getattr(field, func_name)(field_value, *other_args)
 
             except ValidationError as e:
@@ -178,6 +182,8 @@ class TestAbs(models.Model):
     desc = models.CharField(max_length=30,blank=True,null=True)
     desc1 = models.CharField(max_length=30,blank=False,null=False,default = "default values")
     desc2 = models.CharField()
+
+    # file_testing_fields = models.FileField(upload_to='/static/')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
