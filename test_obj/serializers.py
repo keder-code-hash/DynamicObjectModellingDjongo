@@ -15,19 +15,19 @@ class TestAbsSerializers(serializers.Serializer):
 
     # file_testing_fields = serializers.FileField()
 
-    created_at = serializers.DateTimeField(read_only = True)
-    updated_at = serializers.DateTimeField(read_only = True)
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
 
-    created_at_date = serializers.DateField(read_only = True)
-    updated_at_date = serializers.DateField(read_only = True)
+    created_at_date = serializers.DateField()
+    updated_at_date = serializers.DateField()
     
-    created_at_time = serializers.TimeField(read_only = True)
-    updated_at_time = serializers.TimeField(read_only = True)
+    created_at_time = serializers.TimeField()
+    updated_at_time = serializers.TimeField()
 
 
 
 class TestEmbedSerializers(serializers.ModelSerializer):
-    test_embed = serializers.JSONField(required = False)
+    test_embed = TestAbsSerializers()
     test_array = serializers.ListField(child = TestAbsSerializers(),default = [],allow_null = True)
     class Meta:
         model = TestEmbed

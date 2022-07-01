@@ -14,7 +14,7 @@ class TestDynamicObject(APIView):
 
         test = TestEmbed.objects.all().values() 
         test = list(test)
-        print(test)
+        # print(test)
 
         serialized_data = self.serializer_class(data=test,many = True)
         serialized_data.is_valid(raise_exception=True)

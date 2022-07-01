@@ -112,7 +112,10 @@ class EmbeddedDocument(EmbeddedField):
                 field_value = value[field.attname]
             except KeyError:
                 continue
+            if (field.blank is False and field_value=="") or (field.null is True and field_value==None):
+                field_value = None
             if field_value is not None:
+                # print(f'field value for "{field}": "{field_value==""}"')
                 processed_value[field.attname] = getattr(field, func_name)(field_value, *other_args)
         return processed_value
 
@@ -120,19 +123,35 @@ class EmbeddedDocument(EmbeddedField):
 class ArrayDocument(ArrayField):
     def __init__(self,model_container, *args, **kwargs) -> None:
         self.model_container = model_container
+        self.EmbeddedDocumentObj = EmbeddedDocument(model_container=self.model_container)
         super().__init__(model_container = model_container,
                  model_form_class = None,
                  model_form_kwargs = None,
                  *args, **kwargs)
     
     def _save_value_thru_fields(self, func_name: str, value: typing.Union[list, dict], *other_args):
-
-        EmbeddedDocumentObj = EmbeddedDocument(model_container=self.model_container)
         processed_value = []
         for pre_dict in value:
-            post_dict =EmbeddedDocumentObj._save_value_thru_fields(func_name,
+            post_dict =self.EmbeddedDocumentObj._save_value_thru_fields(func_name,
                                                             pre_dict,
                                                             *other_args)
+            processed_value.append(post_dict)
+        return processed_value
+    
+    def _value_thru_fields(self,
+                           func_name: str,
+                           value: typing.Union[list, dict],
+                           *other_args):
+        if isinstance(value, dict):
+            return self.EmbeddedDocumentObj._value_thru_fields(func_name,
+                                              value,
+                                              *other_args)
+
+        processed_value = []
+        for pre_dict in value:
+            post_dict = self.EmbeddedDocumentObj._value_thru_fields(func_name,
+                                                   pre_dict,
+                                                   *other_args)
             processed_value.append(post_dict)
         return processed_value
 
