@@ -15,14 +15,14 @@ class TestAbsSerializers(serializers.Serializer):
 
     # file_testing_fields = serializers.FileField()
 
-    created_at = serializers.DateTimeField()
-    updated_at = serializers.DateTimeField()
+    # created_at = serializers.DateTimeField()
+    # updated_at = serializers.DateTimeField()
 
-    created_at_date = serializers.DateField()
-    updated_at_date = serializers.DateField()
+    # created_at_date = serializers.DateField()
+    # updated_at_date = serializers.DateField()
     
-    created_at_time = serializers.TimeField()
-    updated_at_time = serializers.TimeField()
+    # created_at_time = serializers.TimeField()
+    # updated_at_time = serializers.TimeField()
 
 
 

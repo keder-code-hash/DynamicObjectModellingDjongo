@@ -21,7 +21,15 @@ class TestDynamicObject(APIView):
         return Response(serialized_data.validated_data,status=status.HTTP_201_CREATED)
     
     def post(self, request, format=None):
+        # test_abs = TestAbs()
+        # test_abs.desc = "hii"
+        # test_embed = TestEmbed(test_embed = test_abs)
+        # test_embed.save()
+        
         serialized_data = self.serializer_class(data=request.data)
+        # print(serialized_data)
         serialized_data.is_valid(raise_exception=True) 
         serialized_data.save()
         return Response(serialized_data.validated_data,status=status.HTTP_201_CREATED)
+
+
